@@ -48,13 +48,21 @@ def parse(filename, d):
     f.close()
     return values
 
-def parse_xml(filename,tag):
+def parse_xml(filename,rec_tag,skip_tag):
     # Extracts all the elemnets under <tag>
     root = ET.parse(filename)
     values = defaultdict(list)
-    for position in root.iter(tag):
+    for position in root.iter(rec_tag):
+        try:
+          if skip_tag is not None and position.find(skip_tag).text.strip()=='Yes':
+              continue
+        except:
+            print('Given skip tag not found')
         for field in position:
-          values[field.tag].append(field.text)
+            if field is not None:
+                values[field.tag].append(field.text.strip())
+            else:
+                values[field.tag].append('')
     return values
 
 def strip_evil_whitespace(text):
@@ -149,8 +157,14 @@ parser.add_option('-o','--out',
                   dest = "out",
                   default = 'out.tex',
                   help = 'Set the output file. Default: %default') 
-
-
+parser.add_option('-t','--Tag',
+                  dest = "record_tag",
+                  default = 'position',
+                  help = 'Set the record element tag. Default: %default') 
+parser.add_option('-s','--Skip',
+                  dest = "skip_tag",
+                  default = None,
+                  help = 'Set the tag name such that the record is skipped when it is Yes. Default: None')
 
 options, args = parser.parse_args(sys.argv)
 if len(args) < 3 and not options.dry or len(args)<2:
@@ -171,7 +185,7 @@ else:
     variables_table = args[2]
     if variables_table.endswith('.xml'):
       # use tag position for the ad information
-      variables = parse_xml(variables_table,'position')
+      variables = parse_xml(variables_table,options.record_tag,options.skip_tag)
     else:
       variables = parse(variables_table, options.dialect)
     print 'Available variables', variables.keys()
